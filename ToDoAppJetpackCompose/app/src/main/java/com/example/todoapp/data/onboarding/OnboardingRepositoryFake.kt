@@ -16,17 +16,17 @@ class OnboardingRepositoryFake : OnboardingRepository {
         OnboardingItem(
             title = "Easy Time Management",
             body = "With management based on priority and daily tasks, it gives you convenience in managing and deciding what must be done first.",
-            imageRes = R.drawable.dao1
+            imageRes = R.drawable.anh1
         ),
         OnboardingItem(
             title = "Increase Work Effectiveness",
             body = "Time management and determining the more important tasks will give your job better statistics and improvement.",
-            imageRes = R.drawable.dao2
+            imageRes = R.drawable.anh2
         ),
         OnboardingItem(
             title = "Reminder Notification",
             body = "This app provides reminders so you don’t forget your assignments according to the time you set.",
-            imageRes = R.drawable.dao3
+            imageRes = R.drawable.anh3
         )
     )
 
