@@ -4,7 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material3.*
@@ -21,20 +21,24 @@ import coil.compose.AsyncImage
 import com.example.todoapp.R
 import com.example.todoapp.domain.profile.model.UserProfile
 import com.example.todoapp.ui.theme.ToDoAppTheme
+import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(onBack: () -> Unit) {
+fun ProfileScreen(
+    onLogout: () -> Unit,
+    onSaveDone: () -> Unit
+) {
     val vm: ProfileViewModel = viewModel(factory = ProfileViewModel.provideFactory())
     val state by vm.state.collectAsState()
     val snack = remember { SnackbarHostState() }
 
     ProfileContent(
         state = state,
-        onBack = onBack,
-        onSave = { p -> vm.save(p, onDone = onBack) },
+        onLogout = onLogout,
+        onSave = { p -> vm.save(p, onDone = onSaveDone) },
         onChangeAvatar = { /* TODO: picker ảnh */ },
         snackbarHostState = snack
     )
@@ -44,7 +48,7 @@ fun ProfileScreen(onBack: () -> Unit) {
 @Composable
 private fun ProfileContent(
     state: ProfileUiState,
-    onBack: () -> Unit,
+    onLogout: () -> Unit,
     onSave: (UserProfile) -> Unit,
     onChangeAvatar: () -> Unit,
     snackbarHostState: SnackbarHostState
@@ -54,22 +58,30 @@ private fun ProfileContent(
             TopAppBar(
                 title = { Text("Profile", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, null) }
+                    IconButton(onClick = {
+                        FirebaseAuth.getInstance().signOut()
+                        onLogout()
+                    }) {
+                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
+                    }
                 }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when {
-            state.loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            state.loading -> Box(
+                Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
+
             state.error != null -> {
                 LaunchedEffect(state.error) { snackbarHostState.showSnackbar(state.error) }
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Text("Đã xảy ra lỗi. Vui lòng thử lại.")
                 }
             }
+
             else -> {
                 val p = state.profile ?: UserProfile()
                 var name by remember(p) { mutableStateOf(p.name) }
@@ -78,12 +90,15 @@ private fun ProfileContent(
                 var showDobPicker by remember { mutableStateOf(false) }
 
                 Column(
-                    Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp),
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(Modifier.height(16.dp))
 
-                    // Avatar + camera overlay
+                    // Avatar
                     Box(Modifier.size(104.dp), contentAlignment = Alignment.BottomEnd) {
                         val avatarMod = Modifier.size(104.dp).clip(CircleShape)
                         if (!p.avatarUrl.isNullOrBlank()) {
@@ -94,27 +109,37 @@ private fun ProfileContent(
                                 contentDescription = null, modifier = avatarMod
                             )
                         }
-                        FilledIconButton(onClick = onChangeAvatar, modifier = Modifier.size(32.dp).offset(x = 6.dp, y = 6.dp)) {
-                            Icon(Icons.Outlined.CameraAlt, contentDescription = null)
-                        }
+                        FilledIconButton(
+                            onClick = onChangeAvatar,
+                            modifier = Modifier.size(32.dp).offset(x = 6.dp, y = 6.dp)
+                        ) { Icon(Icons.Outlined.CameraAlt, contentDescription = null) }
                     }
 
                     Spacer(Modifier.height(24.dp))
 
                     OutlinedTextField(
-                        value = name, onValueChange = { name = it },
-                        label = { Text("Name") }, modifier = Modifier.fillMaxWidth()
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth()
                     )
+
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedTextField(
-                        value = email, onValueChange = {}, enabled = false,
-                        label = { Text("Email") }, modifier = Modifier.fillMaxWidth()
+                        value = email,
+                        onValueChange = {},
+                        enabled = false,
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth()
                     )
+
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedTextField(
-                        value = dob, onValueChange = {}, readOnly = true,
+                        value = dob,
+                        onValueChange = {},
+                        readOnly = true,
                         label = { Text("Date of Birth") },
                         trailingIcon = {
                             IconButton(onClick = { showDobPicker = true }) {
@@ -127,25 +152,41 @@ private fun ProfileContent(
                     if (showDobPicker) {
                         DatePickerDialog(
                             onDismissRequest = { showDobPicker = false },
-                            confirmButton = { TextButton(onClick = { showDobPicker = false }) { Text("OK") } },
-                            dismissButton = { TextButton(onClick = { showDobPicker = false }) { Text("Cancel") } }
+                            confirmButton = {
+                                TextButton(onClick = { showDobPicker = false }) { Text("OK") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDobPicker = false }) { Text("Cancel") }
+                            }
                         ) {
-                            val statePicker = rememberDatePickerState(
+                            val pickerState = rememberDatePickerState(
                                 initialSelectedDateMillis = dob.takeIf { it.isNotBlank() }?.let { parseDob(it) }
                             )
-                            DatePicker(state = statePicker)
-                            LaunchedEffect(statePicker.selectedDateMillis) {
-                                statePicker.selectedDateMillis?.let { dob = formatDob(it) }
+                            DatePicker(state = pickerState)
+                            LaunchedEffect(pickerState.selectedDateMillis) {
+                                pickerState.selectedDateMillis?.let { dob = formatDob(it) }
                             }
                         }
                     }
 
                     Spacer(Modifier.weight(1f))
+
                     Button(
-                        onClick = { onSave(UserProfile(name = name, email = email, dob = dob, avatarUrl = p.avatarUrl, avatarRes = p.avatarRes)) },
+                        onClick = {
+                            onSave(
+                                UserProfile(
+                                    name = name,
+                                    email = email,
+                                    dob = dob,
+                                    avatarUrl = p.avatarUrl,
+                                    avatarRes = p.avatarRes
+                                )
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = MaterialTheme.shapes.extraLarge
-                    ) { Text("Back") }
+                    ) { Text("Save") }
+
                     Spacer(Modifier.height(16.dp))
                 }
             }
@@ -164,7 +205,13 @@ private fun parseDob(dob: String): Long? = try {
 @Composable
 private fun ProfilePreview() = ToDoAppTheme {
     ProfileContent(
-        state = ProfileUiState(loading = false, profile = UserProfile(name = "Melissa", email = "mel@ex.com", dob = "01/01/2000")),
-        onBack = {}, onSave = {}, onChangeAvatar = {}, snackbarHostState = remember { SnackbarHostState() }
+        state = ProfileUiState(
+            loading = false,
+            profile = UserProfile(name = "Melissa", email = "mel@ex.com", dob = "01/01/2000")
+        ),
+        onLogout = {},
+        onSave = {},
+        onChangeAvatar = {},
+        snackbarHostState = remember { SnackbarHostState() }
     )
 }

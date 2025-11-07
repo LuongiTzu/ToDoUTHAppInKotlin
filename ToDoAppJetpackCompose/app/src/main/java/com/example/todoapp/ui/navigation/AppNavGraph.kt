@@ -8,15 +8,20 @@ import com.example.todoapp.feature.auth.login.LoginScreen
 import com.example.todoapp.feature.onboarding.OnboardingScreen
 import com.example.todoapp.feature.onboarding.SplashScreen
 import com.example.todoapp.feature.profile.ProfileScreen
+import com.example.todoapp.feature.task.TaskListScreen
+import com.example.todoapp.feature.task.TaskDetailScreen
 
 @Composable
 fun AppNavGraph(nav: NavHostController) {
     NavHost(navController = nav, startDestination = Dest.Splash.route) {
 
         composable(Dest.Splash.route) {
-            SplashScreen(onDone = {
-                nav.navigate(Dest.Onboarding.route) { popUpTo(0) }
-            })
+            SplashScreen(
+                navController = nav,
+                onDone = {
+                    nav.navigate(Dest.Onboarding.route) { popUpTo(0) }
+                }
+            )
         }
 
         composable(Dest.Onboarding.route) {
@@ -35,8 +40,22 @@ fun AppNavGraph(nav: NavHostController) {
 
         composable(Dest.Profile.route) {
             ProfileScreen(
-                onBack = { nav.popBackStack() } // ← quay lại Login
+                onLogout = {
+                    nav.navigate(Dest.Login.route) { popUpTo(0) }
+                },
+                onSaveDone = {
+                    nav.navigate(Dest.TaskList.route) { popUpTo(0) }
+                }
             )
+        }
+
+        composable(Dest.TaskList.route) {
+            TaskListScreen(navController = nav)
+        }
+
+        composable(Dest.TaskDetail.route) { backStack ->
+            val id = backStack.arguments?.getString("id")?.toIntOrNull() ?: 0
+            TaskDetailScreen(taskId = id, navController = nav)
         }
     }
 }
