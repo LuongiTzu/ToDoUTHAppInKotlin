@@ -73,7 +73,9 @@ fun TaskDetailScreen(
                 )
 
                 IconButton(onClick = {
-                    vm.removeTask(taskId) { navController.popBackStack() }
+                    vm.removeTask(taskId) {
+                        navController.popBackStack()
+                    }
                 }) {
                     Box(
                         modifier = Modifier
@@ -89,6 +91,7 @@ fun TaskDetailScreen(
                         )
                     }
                 }
+
             }
         }
     ) { padding ->

@@ -25,6 +25,9 @@ class TaskViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _shouldReload = MutableStateFlow(false)
+    val shouldReload: StateFlow<Boolean> = _shouldReload
+
     fun loadTasks() {
         viewModelScope.launch {
             try {
@@ -59,12 +62,19 @@ class TaskViewModel : ViewModel() {
             try {
                 _isLoading.value = true
                 val response = deleteTaskUseCase(id)
-                if (response.isSuccess) onDone()
+                if (response.isSuccess) {
+                    _shouldReload.value = true     // ✅ báo cho TaskList reload
+                    onDone()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun resetReloadFlag() {
+        _shouldReload.value = false
     }
 }

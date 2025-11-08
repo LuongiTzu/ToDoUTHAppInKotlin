@@ -17,26 +17,42 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.todoapp.R
 import com.example.todoapp.feature.task.component.EmptyView
 import com.example.todoapp.feature.task.component.TaskItemCard
+import com.example.todoapp.ui.component.MyBottomBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskListScreen(
     navController: NavController,
-    vm: TaskViewModel = viewModel()   // ⬅️ bỏ provideFactory()
+    vm: TaskViewModel = viewModel()
 ) {
     val tasks by vm.tasks.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
+    val shouldReload by vm.shouldReload.collectAsState()
 
+    // 🔹 Lần đầu vào: load danh sách
     LaunchedEffect(Unit) { vm.loadTasks() }
 
-    Scaffold(topBar = { TaskListHeader() }) { padding ->
+    // 🔹 Khi Detail xóa task → reload lại danh sách
+    LaunchedEffect(shouldReload) {
+        if (shouldReload) {
+            vm.loadTasks()
+            vm.resetReloadFlag()
+        }
+    }
+
+    Scaffold(
+        topBar = { TaskListHeader() },
+        bottomBar = { MyBottomBar(navController) }
+    ) { padding ->
         Box(
             Modifier
                 .fillMaxSize()
@@ -51,8 +67,8 @@ fun TaskListScreen(
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(tasks) { task ->
                         TaskItemCard(task = task) {
-                            navController.navigate("taskDetail/${task.id}")
-                        }
+                            // 🔹 Điều hướng đúng route “task/{id}”
+                            navController.navigate("taskDetail/${task.id}")                        }
                     }
                 }
             }
@@ -60,6 +76,7 @@ fun TaskListScreen(
     }
 }
 
+/* ================= HEADER ================= */
 @Composable
 private fun TaskListHeader() {
     Row(
@@ -79,15 +96,10 @@ private fun TaskListHeader() {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    buildAnnotatedString {
-                        withStyle(SpanStyle(color = Color.Black, fontWeight = FontWeight.Bold)) {
-                            append("Smart")
-                        }
-                        withStyle(SpanStyle(color = Color(0xFF1976D2), fontWeight = FontWeight.Bold)) {
-                            append("Tasks")
-                        }
-                    },
-                    fontSize = 26.sp
+                    text="SmartTasks",
+                    fontSize = 26.sp,
+                    color = Color(0xFF1976D2),
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     "A simple and efficient to-do app",
@@ -103,5 +115,50 @@ private fun TaskListHeader() {
             tint = Color(0xFFFFC107),
             modifier = Modifier.size(30.dp)
         )
+    }
+}
+
+/* ================= PREVIEW ================= */
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun PreviewTaskListScreen() {
+    val navController = rememberNavController()
+
+    val fakeTasks = listOf(
+        com.example.todoapp.domain.task.model.TaskResponse(
+            id = 1,
+            title = "Complete Android Project",
+            description = "Finish UI and connect to API",
+            status = "In Progress",
+            priority = "High",
+            category = "Work",
+            dueDate = "2024-11-20T09:00:00Z"
+        ),
+        com.example.todoapp.domain.task.model.TaskResponse(
+            id = 2,
+            title = "Submit Report",
+            description = "Prepare and submit project report",
+            status = "Pending",
+            priority = "Medium",
+            category = "Education",
+            dueDate = "2024-11-22T09:00:00Z"
+        )
+    )
+
+    Scaffold(
+        topBar = { TaskListHeader() },
+        bottomBar = { MyBottomBar(navController) }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(fakeTasks) { task ->
+                com.example.todoapp.feature.task.component.TaskItemCard(task = task) {}
+            }
+        }
     }
 }
